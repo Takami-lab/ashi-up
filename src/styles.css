@@ -1,0 +1,172 @@
+:root {
+  color-scheme: light;
+  --bg: #f7f9fb;
+  --text: #1c2b3a;
+  --blue: #1e6fd9;
+  --blue-dark: #1757ab;
+  --green: #1faa59;
+  --red: #c0392b;
+  font-family: 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic UI', Meiryo, system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  -webkit-text-size-adjust: 100%;
+  overscroll-behavior: none;
+}
+
+/* Start / Finish / Error */
+.screen {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8vh;
+  padding: 24px;
+  text-align: center;
+}
+
+.title {
+  margin: 0;
+  font-size: clamp(36px, 10vw, 72px);
+  font-weight: 800;
+  line-height: 1.3;
+  color: var(--blue-dark);
+}
+.title.success {
+  color: var(--green);
+  font-size: clamp(56px, 18vw, 120px);
+}
+.title.error {
+  color: var(--red);
+}
+
+.big-button {
+  width: min(86vw, 420px);
+  min-height: 88px;
+  border: 0;
+  border-radius: 24px;
+  background: var(--blue);
+  color: #fff;
+  font: inherit;
+  font-size: clamp(30px, 8vw, 40px);
+  font-weight: 800;
+  cursor: pointer;
+  touch-action: manipulation;
+  box-shadow: 0 6px 0 var(--blue-dark);
+}
+.big-button:active:not(:disabled) {
+  transform: translateY(3px);
+  box-shadow: 0 3px 0 var(--blue-dark);
+}
+.big-button:disabled {
+  background: #9db9de;
+  box-shadow: 0 6px 0 #7f9cc5;
+  cursor: default;
+}
+
+/* Training */
+.training {
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+
+.instruction {
+  flex: none;
+  padding: 14px 12px;
+  text-align: center;
+  font-size: clamp(32px, 9vw, 56px);
+  font-weight: 800;
+  color: var(--blue-dark);
+  background: #fff;
+  border-bottom: 3px solid #dbe6f3;
+}
+.training.is-cleared .instruction {
+  color: #fff;
+  background: var(--green);
+  border-color: var(--green);
+}
+
+.stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  background: #eef2f6;
+  overflow: hidden;
+}
+.stage video,
+.stage canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+/* 映像は欠けさせず全体を表示（骨格座標との対応は viewTransform と一致させる） */
+.stage video {
+  object-fit: contain;
+}
+.stage video.mirrored {
+  transform: scaleX(-1);
+}
+.stage canvas {
+  pointer-events: none;
+}
+
+.progress {
+  flex: none;
+  height: 18px;
+  background: #dbe6f3;
+}
+.progress-bar {
+  height: 100%;
+  width: 0;
+  background: var(--green);
+}
+
+/* 開発者パネル（?dev のときのみ） */
+.dev-panel {
+  position: fixed;
+  right: 8px;
+  bottom: 28px;
+  z-index: 10;
+  max-width: 260px;
+  padding: 6px 10px;
+  font-size: 13px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid #c8d4e2;
+  border-radius: 10px;
+}
+.dev-panel label {
+  display: block;
+  margin: 6px 0;
+}
+.dev-panel input[type='range'] {
+  width: 100%;
+}
+.dev-panel pre {
+  margin: 6px 0 0;
+  font-size: 12px;
+}
+.dev-row {
+  display: flex;
+  gap: 6px;
+}
+.dev-row button {
+  flex: 1;
+  padding: 6px;
+}
