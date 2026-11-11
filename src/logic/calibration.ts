@@ -11,6 +11,8 @@ export interface Baseline {
   hipCenter: Pt
   /** 対象脚の腰→足首の距離。体格の物差しとして使う */
   legLength: number
+  /** 両腰の距離。左右方向の物差し（横ステップ用） */
+  hipWidth: number
 }
 
 export type CalibStatus = 'noBody' | 'adjusting' | 'ready'
@@ -58,6 +60,7 @@ export class StandingCalibrator {
       ankle: { x: ankle.x, y: ankle.y },
       hipCenter: mid(lms[LM.L_HIP], lms[LM.R_HIP]),
       legLength: dist(hip, ankle),
+      hipWidth: dist(lms[LM.L_HIP], lms[LM.R_HIP]),
     })
     while (this.samples.length > 1 && t - this.samples[0].t > STABLE_MS + 300) this.samples.shift()
 
@@ -72,6 +75,7 @@ export class StandingCalibrator {
         ankle: mean(s.map((p) => p.ankle)),
         hipCenter: mean(s.map((p) => p.hipCenter)),
         legLength: s.reduce((sum, p) => sum + p.legLength, 0) / s.length,
+        hipWidth: s.reduce((sum, p) => sum + p.hipWidth, 0) / s.length,
       },
     }
   }

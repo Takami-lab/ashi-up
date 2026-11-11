@@ -1,6 +1,7 @@
 ﻿import { describe, expect, it } from 'vitest'
 import { createViewTransform } from '../src/geometry/viewTransform'
 import { StandingCalibrator } from '../src/logic/calibration'
+import { lateralOffset, outwardSign, toBodyUnits } from '../src/logic/normalize'
 import { ReachJudge } from '../src/logic/reachJudge'
 import { computeTarget } from '../src/logic/target'
 import { DEFAULT_SPEC, type Lm } from '../src/types'
@@ -80,6 +81,33 @@ describe('Target と到達判定', () => {
     expect(j.update(530, pose(150, 0.2)[28], target).progress).toBe(0)
     for (let t = 560; t < 1000; t += 33) j.update(t, pose(150)[28], target)
     expect(j.update(1033, pose(0)[28], target).progress).toBe(0)
+  })
+})
+
+describe('正規化', () => {
+  const b = calibrated().baseline!
+
+  it('腰幅が基準に入る', () => {
+    expect(b.hipWidth).toBeCloseTo(120, 0)
+  })
+
+  it('横は腰幅比、縦は脚長比（上向き正）', () => {
+    expect(toBodyUnits({ x: 300 - 120, y: 1100 - 250 }, b)).toEqual({ x: -1, y: 0.5 })
+  })
+
+  it('外向き方向は基準姿勢から決まる（右足が画像左側なら左向きが外）', () => {
+    expect(outwardSign(b)).toBe(-1)
+    expect(lateralOffset({ x: 300 - 120, y: 1100 }, b)).toBeCloseTo(1, 5)
+    expect(lateralOffset({ x: 300 + 60, y: 1100 }, b)).toBeCloseTo(-0.5, 5)
+  })
+
+  it('カメラ距離（スケール）が変わっても同じ値になる', () => {
+    const scale = (l: Lm[]) => l.map((p) => ({ ...p, x: p.x * 2, y: p.y * 2 }))
+    const cal = new StandingCalibrator('right')
+    let r = cal.update(0, scale(pose()), { w: 1440, h: 2560 })
+    for (let t = 33; t <= 1100; t += 33) r = cal.update(t, scale(pose()), { w: 1440, h: 2560 })
+    const b2 = r.baseline!
+    expect(lateralOffset({ x: 600 - 240, y: 2200 }, b2)).toBeCloseTo(1, 5)
   })
 })
 
