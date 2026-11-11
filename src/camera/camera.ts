@@ -9,11 +9,10 @@ export class CameraError extends Error {
 }
 
 /** カメラを起動して MediaStream を返す。失敗時は CameraError */
-export async function openCamera(facing: Facing): Promise<MediaStream> {
+export async function openCamera(facing: Facing, portrait: boolean): Promise<MediaStream> {
   if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
     throw new CameraError('insecure')
   }
-  const portrait = window.innerHeight >= window.innerWidth
   try {
     return await navigator.mediaDevices.getUserMedia({
       audio: false,
@@ -21,6 +20,7 @@ export async function openCamera(facing: Facing): Promise<MediaStream> {
         facingMode: { ideal: facing },
         width: { ideal: portrait ? 720 : 1280 },
         height: { ideal: portrait ? 1280 : 720 },
+        aspectRatio: { ideal: portrait ? 9 / 16 : 16 / 9 },
       },
     })
   } catch (e) {

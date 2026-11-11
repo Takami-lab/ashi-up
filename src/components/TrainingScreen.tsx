@@ -21,6 +21,18 @@ interface Props {
   onDebug?(info: DebugInfo): void
 }
 
+/** 画面の向き。変わったらカメラを取り直し、向きに合った縦横の映像を得る */
+function usePortrait() {
+  const [portrait, setPortrait] = useState(() => window.matchMedia('(orientation: portrait)').matches)
+  useEffect(() => {
+    const mq = window.matchMedia('(orientation: portrait)')
+    const on = () => setPortrait(mq.matches)
+    mq.addEventListener('change', on)
+    return () => mq.removeEventListener('change', on)
+  }, [])
+  return portrait
+}
+
 export function TrainingScreen({ estimator, spec, facing, onCleared, onCameraError, onDebug }: Props) {
   const stageRef = useRef<HTMLDivElement>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -30,6 +42,7 @@ export function TrainingScreen({ estimator, spec, facing, onCleared, onCameraErr
   const specRef = useRef(spec)
   const [status, setStatus] = useState<UiStatus | 'loading'>('loading')
   const mirror = facing === 'user'
+  const portrait = usePortrait()
 
   // コールバックは最新を参照しつつ、エンジンの再生成は避ける
   const cbRef = useRef({ onCleared, onCameraError, onDebug })
@@ -53,7 +66,7 @@ export function TrainingScreen({ estimator, spec, facing, onCleared, onCameraErr
 
     ;(async () => {
       try {
-        stream = await openCamera(facing)
+        stream = await openCamera(facing, portrait)
         if (cancelled) return closeCamera(stream)
         video.srcObject = stream
         await video.play()
@@ -82,7 +95,7 @@ export function TrainingScreen({ estimator, spec, facing, onCleared, onCameraErr
       closeCamera(stream)
       video.srcObject = null
     }
-  }, [estimator, facing, mirror])
+  }, [estimator, facing, mirror, portrait])
 
   // 開発者設定の変更を実行中のエンジンへ反映
   useEffect(() => {

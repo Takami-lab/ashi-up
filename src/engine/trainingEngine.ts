@@ -211,7 +211,10 @@ export class TrainingEngine {
   }
 
   private render() {
-    const tf = createViewTransform(this.stage, this.videoSize, 'contain', this.mirror)
+    // 画面と映像の縦横が一致するときは画面いっぱい（cover）、違うときは全体表示（contain）
+    const fit = this.stage.w < this.stage.h === this.videoSize.w < this.videoSize.h ? 'cover' : 'contain'
+    this.video.style.objectFit = fit
+    const tf = createViewTransform(this.stage, this.videoSize, fit, this.mirror)
     drawOverlay(this.ctx, this.stage, { ...this.overlay, tf })
   }
 
