@@ -5,7 +5,10 @@ import { ErrorScreen, FinishScreen, StartScreen, type AppError } from './compone
 import { TrainingScreen } from './components/TrainingScreen'
 import type { DebugInfo } from './engine/trainingEngine'
 import { PoseEstimator } from './pose/poseEstimator'
-import { DEFAULT_SPEC, type LegRaiseSpec } from './types'
+import { DEFAULT_SPEC, type MotionId, type MotionRecord, type MotionResult, type TrainingSpec } from './types'
+
+/** 実施する動作の順序（片足上げ → 横ステップ） */
+const SEQUENCE: MotionId[] = ['raise', 'step']
 
 type Phase = 'start' | 'training' | 'finish' | 'error'
 
@@ -15,8 +18,10 @@ export default function App() {
   const [phase, setPhase] = useState<Phase>('start')
   const [error, setError] = useState<AppError>('unknown')
   const [estimator, setEstimator] = useState<PoseEstimator | null>(null)
-  const [spec, setSpec] = useState<LegRaiseSpec>(DEFAULT_SPEC)
+  const [spec, setSpec] = useState<TrainingSpec>(DEFAULT_SPEC)
   const [facing, setFacing] = useState<Facing>('user')
+  const [motionIdx, setMotionIdx] = useState(0)
+  const [records, setRecords] = useState<MotionRecord[]>([])
   const [debug, setDebug] = useState<DebugInfo | null>(null)
 
   // MediaPipe は起動時に読み込む（Startボタンは完了まで押せない）
@@ -43,6 +48,18 @@ export default function App() {
     }
   }, [])
 
+  const start = () => {
+    setMotionIdx(0)
+    setRecords([])
+    setPhase('training')
+  }
+
+  const onResult = (result: MotionResult, ms: number) => {
+    setRecords((rs) => [...rs, { motion: SEQUENCE[motionIdx], result, ms }])
+    if (motionIdx + 1 < SEQUENCE.length) setMotionIdx(motionIdx + 1)
+    else setPhase('finish')
+  }
+
   const fail = (e: AppError) => {
     setError(e)
     setPhase('error')
@@ -50,18 +67,19 @@ export default function App() {
 
   return (
     <>
-      {phase === 'start' && <StartScreen ready={!!estimator} onStart={() => setPhase('training')} />}
+      {phase === 'start' && <StartScreen ready={!!estimator} onStart={start} />}
       {phase === 'training' && estimator && (
         <TrainingScreen
           estimator={estimator}
           spec={spec}
           facing={facing}
-          onCleared={() => setPhase('finish')}
+          motion={SEQUENCE[motionIdx]}
+          onResult={onResult}
           onCameraError={fail}
           onDebug={DEV ? setDebug : undefined}
         />
       )}
-      {phase === 'finish' && <FinishScreen onRestart={() => setPhase('training')} />}
+      {phase === 'finish' && <FinishScreen records={records} onRestart={start} />}
       {phase === 'error' && <ErrorScreen error={error} onBack={() => (error === 'model' ? location.reload() : setPhase('start'))} />}
       {DEV && phase !== 'finish' && (
         <DevPanel spec={spec} onSpec={setSpec} facing={facing} onFacing={setFacing} debug={debug} />

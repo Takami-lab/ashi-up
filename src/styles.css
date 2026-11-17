@@ -102,6 +102,12 @@ body {
   border-color: var(--green);
 }
 
+.training.is-timeout .instruction {
+  color: #fff;
+  background: #7a8794;
+  border-color: #7a8794;
+}
+
 .stage {
   position: relative;
   flex: 1;
@@ -169,4 +175,35 @@ body {
 .dev-row button {
   flex: 1;
   padding: 6px;
+}
+
+/* Feedback */
+.results {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  width: min(86vw, 420px);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.results li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 24px;
+  background: #fff;
+  border: 3px solid #dbe6f3;
+  border-radius: 20px;
+  font-size: clamp(28px, 8vw, 40px);
+  font-weight: 800;
+}
+.results .mark {
+  font-size: 1.3em;
+}
+.results .ok .mark {
+  color: var(--green);
+}
+.results .ng .mark {
+  color: var(--red);
 }

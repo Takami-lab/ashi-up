@@ -2,21 +2,28 @@ import { useEffect, useRef, useState } from 'react'
 import { CameraError, closeCamera, openCamera, type CameraErrorCode, type Facing } from '../camera/camera'
 import { TrainingEngine, type DebugInfo } from '../engine/trainingEngine'
 import type { PoseEstimator } from '../pose/poseEstimator'
-import type { LegRaiseSpec, UiStatus } from '../types'
+import type { MotionId, MotionResult, TrainingSpec, UiStatus } from '../types'
 
 const MESSAGES: Record<UiStatus | 'loading', string> = {
   loading: '準備中…',
   noBody: '全身を映して',
   adjusting: 'まっすぐ立って',
-  active: '足を上げて',
+  active: '',
   cleared: 'CLEAR!',
+  timeout: '時間切れ',
+}
+
+const ACTIVE_MESSAGE: Record<MotionId, string> = {
+  raise: '足を上げて',
+  step: '横に踏み出して',
 }
 
 interface Props {
   estimator: PoseEstimator
-  spec: LegRaiseSpec
+  spec: TrainingSpec
   facing: Facing
-  onCleared(): void
+  motion: MotionId
+  onResult(result: MotionResult, ms: number): void
   onCameraError(code: CameraErrorCode): void
   onDebug?(info: DebugInfo): void
 }
@@ -33,21 +40,22 @@ function usePortrait() {
   return portrait
 }
 
-export function TrainingScreen({ estimator, spec, facing, onCleared, onCameraError, onDebug }: Props) {
+export function TrainingScreen({ estimator, spec, facing, motion, onResult, onCameraError, onDebug }: Props) {
   const stageRef = useRef<HTMLDivElement>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const barRef = useRef<HTMLDivElement>(null)
   const engineRef = useRef<TrainingEngine | null>(null)
   const specRef = useRef(spec)
+  const motionRef = useRef(motion)
   const [status, setStatus] = useState<UiStatus | 'loading'>('loading')
   const mirror = facing === 'user'
   const portrait = usePortrait()
 
   // コールバックは最新を参照しつつ、エンジンの再生成は避ける
-  const cbRef = useRef({ onCleared, onCameraError, onDebug })
+  const cbRef = useRef({ onResult, onCameraError, onDebug })
   useEffect(() => {
-    cbRef.current = { onCleared, onCameraError, onDebug }
+    cbRef.current = { onResult, onCameraError, onDebug }
   })
 
   // カメラ起動 + エンジン開始。アンマウント／カメラ切替時にトラックを解放する
@@ -71,12 +79,12 @@ export function TrainingScreen({ estimator, spec, facing, onCleared, onCameraErr
         video.srcObject = stream
         await video.play()
         if (cancelled) return
-        engine = new TrainingEngine(video, canvas, estimator, specRef.current, mirror, {
+        engine = new TrainingEngine(video, canvas, estimator, specRef.current, mirror, motionRef.current, {
           onStatus: setStatus,
           onProgress: (p) => {
             if (barRef.current) barRef.current.style.width = `${p * 100}%`
           },
-          onCleared: () => cbRef.current.onCleared(),
+          onResult: (r, ms) => cbRef.current.onResult(r, ms),
           onDebug: cbRef.current.onDebug && ((i) => cbRef.current.onDebug?.(i)),
         })
         engineRef.current = engine
@@ -103,10 +111,16 @@ export function TrainingScreen({ estimator, spec, facing, onCleared, onCameraErr
     engineRef.current?.setSpec(spec)
   }, [spec])
 
+  // 動作の切替（カメラは開いたまま、基準姿勢だけ取り直す）
+  useEffect(() => {
+    motionRef.current = motion
+    engineRef.current?.setMotion(motion)
+  }, [motion])
+
   return (
-    <div className={`training ${status === 'cleared' ? 'is-cleared' : ''}`}>
+    <div className={`training ${status === 'cleared' ? 'is-cleared' : status === 'timeout' ? 'is-timeout' : ''}`}>
       <div className="instruction" role="status" aria-live="polite">
-        {MESSAGES[status]}
+        {status === 'active' ? ACTIVE_MESSAGE[motion] : MESSAGES[status]}
       </div>
       <div className="stage" ref={stageRef}>
         <video ref={videoRef} className={mirror ? 'mirrored' : ''} playsInline muted autoPlay />

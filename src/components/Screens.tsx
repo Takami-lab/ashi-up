@@ -1,4 +1,5 @@
 import type { CameraErrorCode } from '../camera/camera'
+import type { MotionId, MotionRecord } from '../types'
 
 export type AppError = CameraErrorCode | 'model'
 
@@ -21,10 +22,24 @@ export function StartScreen({ ready, onStart }: { ready: boolean; onStart(): voi
   )
 }
 
-export function FinishScreen({ onRestart }: { onRestart(): void }) {
+const MOTION_LABEL: Record<MotionId, string> = { raise: '足上げ', step: '横ステップ' }
+
+/** 動作ごとの結果（○ 成功 / × 未達成）。履歴は保存しない */
+export function FinishScreen({ records, onRestart }: { records: MotionRecord[]; onRestart(): void }) {
+  const allClear = records.every((r) => r.result === 'success')
   return (
     <main className="screen">
-      <h1 className="title success">成功!</h1>
+      <h1 className={`title ${allClear ? 'success' : ''}`}>{allClear ? '成功!' : 'もう少し!'}</h1>
+      <ul className="results">
+        {records.map((r) => (
+          <li key={r.motion} className={r.result === 'success' ? 'ok' : 'ng'}>
+            <span>{MOTION_LABEL[r.motion]}</span>
+            <span className="mark" aria-label={r.result === 'success' ? '成功' : '未達成'}>
+              {r.result === 'success' ? '○' : '×'}
+            </span>
+          </li>
+        ))}
+      </ul>
       <button className="big-button" onClick={onRestart}>
         やり直す
       </button>

@@ -1,10 +1,10 @@
 import type { Facing } from '../camera/camera'
 import type { DebugInfo } from '../engine/trainingEngine'
-import type { LegRaiseSpec } from '../types'
+import type { TrainingSpec } from '../types'
 
 interface Props {
-  spec: LegRaiseSpec
-  onSpec(spec: LegRaiseSpec): void
+  spec: TrainingSpec
+  onSpec(spec: TrainingSpec): void
   facing: Facing
   onFacing(f: Facing): void
   debug: DebugInfo | null
@@ -12,7 +12,7 @@ interface Props {
 
 /** 開発者用パネル。URL に ?dev を付けたときだけ表示する（通常ユーザーには出さない） */
 export function DevPanel({ spec, onSpec, facing, onFacing, debug }: Props) {
-  const slider = (label: string, key: 'raiseRatio' | 'radiusRatio' | 'holdMs', min: number, max: number, step: number) => (
+  const slider = (label: string, key: 'raiseRatio' | 'radiusRatio' | 'holdMs' | 'stepOffset' | 'stepMaxLift' | 'stepMaxShift' | 'timeoutMs', min: number, max: number, step: number) => (
     <label>
       {label}: {spec[key]}
       <input
@@ -31,6 +31,10 @@ export function DevPanel({ spec, onSpec, facing, onFacing, debug }: Props) {
       {slider('Target高さ(脚長比)', 'raiseRatio', 0.1, 0.6, 0.05)}
       {slider('Target半径(脚長比)', 'radiusRatio', 0.08, 0.3, 0.01)}
       {slider('保持時間(ms)', 'holdMs', 300, 2000, 100)}
+      {slider('ステップ量(腰幅比)', 'stepOffset', 0.3, 2, 0.1)}
+      {slider('ステップ:足上げ許容(脚長比)', 'stepMaxLift', 0.05, 0.4, 0.05)}
+      {slider('ステップ:体幹ずれ許容(腰幅比)', 'stepMaxShift', 0.2, 1.5, 0.1)}
+      {slider('制限時間(ms)', 'timeoutMs', 5000, 60000, 5000)}
       <div className="dev-row">
         <button onClick={() => onSpec({ ...spec, side: spec.side === 'right' ? 'left' : 'right' })}>
           足: {spec.side === 'right' ? '右' : '左'}

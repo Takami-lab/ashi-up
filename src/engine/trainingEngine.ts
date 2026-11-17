@@ -3,12 +3,13 @@ import { StandingCalibrator, type Baseline } from '../logic/calibration'
 import { kneeAngleDeg } from '../logic/formJudge'
 import { dist, mid } from '../logic/math'
 import { ReachJudge } from '../logic/reachJudge'
+import { computeStepTarget, StepJudge } from '../logic/stepJudge'
 import { computeTarget } from '../logic/target'
 import { legIndices, LM } from '../pose/landmarks'
 import type { PoseEstimator } from '../pose/poseEstimator'
 import { LandmarkSmoother } from '../pose/smoothing'
 import { drawOverlay, type OverlayState } from '../render/overlay'
-import type { Lm, LegRaiseSpec, Size, UiStatus } from '../types'
+import type { Lm, MotionId, MotionResult, Size, TrainingSpec, UiStatus } from '../types'
 
 const MIN_FRAME_INTERVAL_MS = 33
 const CLEAR_DISPLAY_MS = 1200
@@ -22,7 +23,8 @@ export interface EngineCallbacks {
   onStatus(status: UiStatus): void
   /** 毎フレーム呼ばれる（Reactの再描画を伴わない用途のみ） */
   onProgress(progress: number): void
-  onCleared(): void
+  /** 動作が終わった（成功／時間切れ）。結果表示の後に1回だけ呼ばれる */
+  onResult(result: MotionResult, ms: number): void
   onDebug?(info: DebugInfo): void
 }
 
@@ -42,6 +44,8 @@ export class TrainingEngine {
   private smoother = new LandmarkSmoother(0.5)
   private calibrator: StandingCalibrator
   private judge: ReachJudge
+  private stepJudge = new StepJudge()
+  private activeSince = 0
   private baseline: Baseline | null = null
   private status: UiStatus | null = null
   private raf = 0
@@ -72,8 +76,9 @@ export class TrainingEngine {
     private video: HTMLVideoElement,
     private canvas: HTMLCanvasElement,
     private estimator: PoseEstimator,
-    private spec: LegRaiseSpec,
+    private spec: TrainingSpec,
     private mirror: boolean,
+    private motion: MotionId,
     private cb: EngineCallbacks,
   ) {
     this.ctx = canvas.getContext('2d')!
@@ -92,8 +97,15 @@ export class TrainingEngine {
     clearTimeout(this.clearTimer)
   }
 
+  /** 次の動作へ切り替える。基準姿勢を取り直す（全身が映る立位に戻ってもらう） */
+  setMotion(motion: MotionId) {
+    clearTimeout(this.clearTimer)
+    this.motion = motion
+    this.recalibrate()
+  }
+
   /** 開発者設定の反映（Targetの高さなど）。対象の足が変わる場合は基準を取り直す */
-  setSpec(spec: LegRaiseSpec) {
+  setSpec(spec: TrainingSpec) {
     if (spec.side !== this.spec.side) {
       this.calibrator = new StandingCalibrator(spec.side)
       this.overlay.ankleIdx = legIndices(spec.side).ankle
@@ -137,13 +149,15 @@ export class TrainingEngine {
     this.lastFrameT = t
     this.overlay.landmarks = lms
 
-    if (this.status === 'cleared') return
+    if (this.status === 'cleared' || this.status === 'timeout') return
 
     if (!this.baseline) {
       const r = this.calibrator.update(t, lms, this.videoSize)
       if (r.status === 'ready' && r.baseline) {
         this.baseline = r.baseline
         this.judge.reset()
+        this.stepJudge.reset()
+        this.activeSince = t
         this.lostMs = this.movedMs = 0
         this.refreshTarget()
         this.setStatus('active')
@@ -164,15 +178,23 @@ export class TrainingEngine {
     }
     const target = this.overlay.target!
     const ankle = lms ? lms[legIndices(this.spec.side).ankle] : null
-    const r = this.judge.update(t, ankle, target)
+    const hips = lms && lms[LM.L_HIP].v >= 0.5 && lms[LM.R_HIP].v >= 0.5 ? mid(lms[LM.L_HIP], lms[LM.R_HIP]) : null
+    const r =
+      this.motion === 'raise'
+        ? this.judge.update(t, ankle, target)
+        : this.stepJudge.update(t, ankle, hips, this.baseline, this.spec)
     this.overlay.inside = r.inside
     this.overlay.progress = r.progress
     this.cb.onProgress(r.progress)
-    if (r.cleared) {
-      this.setStatus('cleared')
-      this.clearTimer = window.setTimeout(() => this.cb.onCleared(), CLEAR_DISPLAY_MS)
-    }
+    if (r.cleared) this.finish('success', t)
+    else if (t - this.activeSince >= this.spec.timeoutMs) this.finish('timeout', t)
     this.emitDebug(t, lms, ankle)
+  }
+
+  private finish(result: MotionResult, t: number) {
+    const ms = Math.round(t - this.activeSince)
+    this.setStatus(result === 'success' ? 'cleared' : 'timeout')
+    this.clearTimer = window.setTimeout(() => this.cb.onResult(result, ms), CLEAR_DISPLAY_MS)
   }
 
   /** 人物がカメラから大きく外れた／動いたかどうか。外れていれば基準を取り直す */
@@ -193,6 +215,7 @@ export class TrainingEngine {
     this.baseline = null
     this.calibrator.reset()
     this.judge.reset()
+    this.stepJudge.reset()
     this.overlay.target = null
     this.overlay.inside = false
     this.overlay.progress = 0
@@ -201,7 +224,8 @@ export class TrainingEngine {
   }
 
   private refreshTarget() {
-    this.overlay.target = this.baseline ? computeTarget(this.baseline, this.spec) : null
+    const b = this.baseline
+    this.overlay.target = !b ? null : this.motion === 'raise' ? computeTarget(b, this.spec) : computeStepTarget(b, this.spec)
   }
 
   private setStatus(s: UiStatus) {

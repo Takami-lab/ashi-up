@@ -2,6 +2,7 @@
 import { createViewTransform } from '../src/geometry/viewTransform'
 import { StandingCalibrator } from '../src/logic/calibration'
 import { lateralOffset, outwardSign, toBodyUnits } from '../src/logic/normalize'
+import { computeStepTarget, StepJudge } from '../src/logic/stepJudge'
 import { ReachJudge } from '../src/logic/reachJudge'
 import { computeTarget } from '../src/logic/target'
 import { DEFAULT_SPEC, type Lm } from '../src/types'
@@ -108,6 +109,37 @@ describe('正規化', () => {
     for (let t = 33; t <= 1100; t += 33) r = cal.update(t, scale(pose()), { w: 1440, h: 2560 })
     const b2 = r.baseline!
     expect(lateralOffset({ x: 600 - 240, y: 2200 }, b2)).toBeCloseTo(1, 5)
+  })
+})
+
+describe('横ステップ', () => {
+  const b = calibrated().baseline!
+  const hips = { x: 360, y: 600 }
+  /** 右足首を外向き（画像左）へ dx px */
+  const ankle = (dx: number, dy = 0): Lm => ({ x: 300 - dx, y: 1100 + dy, v: 0.99 })
+
+  const run = (a: Lm, ms: number, h = hips) => {
+    const j = new StepJudge()
+    let s
+    for (let t = 0; t <= ms; t += 33) s = j.update(t, a, h, b, DEFAULT_SPEC)
+    return s!
+  }
+
+  it('Target は足首の外側、腰幅の1.0倍', () => {
+    expect(computeStepTarget(b, DEFAULT_SPEC).center.x).toBeCloseTo(300 - 120, 0)
+  })
+  it('立位のままでは CLEAR にならない', () => expect(run(ankle(0), 3000).cleared).toBe(false))
+  it('腰幅1.0倍以上を0.7秒保持で CLEAR', () => {
+    expect(run(ankle(130), 600).cleared).toBe(false)
+    expect(run(ankle(130), 800).cleared).toBe(true)
+  })
+  it('量が足りない・足を上げている・体ごと動くと不成立', () => {
+    expect(run(ankle(80), 1500).cleared).toBe(false)
+    expect(run(ankle(130, -100), 1500).cleared).toBe(false)
+    expect(run(ankle(130), 1500, { x: 360 - 120, y: 600 }).cleared).toBe(false)
+  })
+  it('信頼度が低いと不成立', () => {
+    expect(run({ ...ankle(130), v: 0.2 }, 1500).cleared).toBe(false)
   })
 })
 

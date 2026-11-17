@@ -68,7 +68,7 @@ tests/          ロジックのテスト
 ```
 
 - Target 到達判定（`reachJudge`）とフォーム判定（`formJudge`、膝の曲げなど）は独立。フォーム判定は現状、開発者パネルの表示のみ
-- 動作は `LegRaiseSpec`（左右・挙上量・半径・保持時間）で定義。左足上げは `side: 'left'` で動作します（UI からの選択は未実装）
+- 動作は `TrainingSpec`（左右・挙上量・半径・保持時間）で定義。左足上げは `side: 'left'` で動作します（UI からの選択は未実装）
 
 ## GitHub Pages への公開
 
@@ -85,3 +85,8 @@ iOS Safari / Android Chrome / PC Chrome / PC Safari を想定（GPU が使えな
 ## ライセンス・クレジット
 
 - MediaPipe Pose Landmarker（Apache-2.0）、モデル `pose_landmarker_lite`（`public/models/`）
+
+## 設計・検証ドキュメント
+- [docs/requirements.md](docs/requirements.md)：各動作のクリア判定条件（数式）
+- [docs/screens.md](docs/screens.md)：画面構成・遷移
+- [docs/verification.md](docs/verification.md)：端末・カメラ位置別の検証計画と記録表
