@@ -25,6 +25,8 @@ export type MotionResult = 'success' | 'timeout'
 /** 1動作の記録 */
 export interface MotionRecord {
   motion: MotionId
+  /** 対象の足 */
+  side: Side
   result: MotionResult
   /** 基準姿勢の取得から結果が出るまでの時間 */
   ms: number

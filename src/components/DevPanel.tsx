@@ -36,9 +36,6 @@ export function DevPanel({ spec, onSpec, facing, onFacing, debug }: Props) {
       {slider('ステップ:体幹ずれ許容(腰幅比)', 'stepMaxShift', 0.2, 1.5, 0.1)}
       {slider('制限時間(ms)', 'timeoutMs', 5000, 60000, 5000)}
       <div className="dev-row">
-        <button onClick={() => onSpec({ ...spec, side: spec.side === 'right' ? 'left' : 'right' })}>
-          足: {spec.side === 'right' ? '右' : '左'}
-        </button>
         <button onClick={() => onFacing(facing === 'user' ? 'environment' : 'user')}>
           カメラ: {facing === 'user' ? '前面' : '背面'}
         </button>

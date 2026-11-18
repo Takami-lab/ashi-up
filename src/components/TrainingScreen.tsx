@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { CameraError, closeCamera, openCamera, type CameraErrorCode, type Facing } from '../camera/camera'
 import { TrainingEngine, type DebugInfo } from '../engine/trainingEngine'
 import type { PoseEstimator } from '../pose/poseEstimator'
-import type { MotionId, MotionResult, TrainingSpec, UiStatus } from '../types'
+import type { MotionId, MotionResult, Side, TrainingSpec, UiStatus } from '../types'
 
 const MESSAGES: Record<UiStatus | 'loading', string> = {
   loading: '準備中…',
@@ -13,9 +13,11 @@ const MESSAGES: Record<UiStatus | 'loading', string> = {
   timeout: '時間切れ',
 }
 
-const ACTIVE_MESSAGE: Record<MotionId, string> = {
-  raise: '足を上げて',
-  step: '横に踏み出して',
+const SIDE_LABEL = { right: '右', left: '左' } as const
+
+const ACTIVE_MESSAGE: Record<MotionId, (side: Side) => string> = {
+  raise: (s) => `${SIDE_LABEL[s]}足を上げて`,
+  step: (s) => `${SIDE_LABEL[s]}足を横に踏み出して`,
 }
 
 interface Props {
@@ -120,7 +122,7 @@ export function TrainingScreen({ estimator, spec, facing, motion, onResult, onCa
   return (
     <div className={`training ${status === 'cleared' ? 'is-cleared' : status === 'timeout' ? 'is-timeout' : ''}`}>
       <div className="instruction" role="status" aria-live="polite">
-        {status === 'active' ? ACTIVE_MESSAGE[motion] : MESSAGES[status]}
+        {status === 'active' ? ACTIVE_MESSAGE[motion](spec.side) : MESSAGES[status]}
       </div>
       <div className="stage" ref={stageRef}>
         <video ref={videoRef} className={mirror ? 'mirrored' : ''} playsInline muted autoPlay />

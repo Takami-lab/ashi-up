@@ -1,5 +1,5 @@
 import type { CameraErrorCode } from '../camera/camera'
-import type { MotionId, MotionRecord } from '../types'
+import type { MotionId, MotionRecord, Side } from '../types'
 
 export type AppError = CameraErrorCode | 'model'
 
@@ -23,6 +23,7 @@ export function StartScreen({ ready, onStart }: { ready: boolean; onStart(): voi
 }
 
 const MOTION_LABEL: Record<MotionId, string> = { raise: '足上げ', step: '横ステップ' }
+const SIDE_LABEL: Record<Side, string> = { right: '右', left: '左' }
 
 /** 動作ごとの結果（○ 成功 / × 未達成）。履歴は保存しない */
 export function FinishScreen({ records, onRestart }: { records: MotionRecord[]; onRestart(): void }) {
@@ -32,8 +33,11 @@ export function FinishScreen({ records, onRestart }: { records: MotionRecord[]; 
       <h1 className={`title ${allClear ? 'success' : ''}`}>{allClear ? '成功!' : 'もう少し!'}</h1>
       <ul className="results">
         {records.map((r) => (
-          <li key={r.motion} className={r.result === 'success' ? 'ok' : 'ng'}>
-            <span>{MOTION_LABEL[r.motion]}</span>
+          <li key={`${r.side}-${r.motion}`} className={r.result === 'success' ? 'ok' : 'ng'}>
+            <span>
+              {SIDE_LABEL[r.side]}
+              {MOTION_LABEL[r.motion]}
+            </span>
             <span className="mark" aria-label={r.result === 'success' ? '成功' : '未達成'}>
               {r.result === 'success' ? '○' : '×'}
             </span>

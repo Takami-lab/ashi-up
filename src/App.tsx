@@ -1,14 +1,19 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { Facing } from './camera/camera'
 import { DevPanel } from './components/DevPanel'
 import { ErrorScreen, FinishScreen, StartScreen, type AppError } from './components/Screens'
 import { TrainingScreen } from './components/TrainingScreen'
 import type { DebugInfo } from './engine/trainingEngine'
 import { PoseEstimator } from './pose/poseEstimator'
-import { DEFAULT_SPEC, type MotionId, type MotionRecord, type MotionResult, type TrainingSpec } from './types'
+import { DEFAULT_SPEC, type MotionId, type MotionRecord, type MotionResult, type Side, type TrainingSpec } from './types'
 
-/** 実施する動作の順序（片足上げ → 横ステップ） */
-const SEQUENCE: MotionId[] = ['raise', 'step']
+/** 実施する動作の順序（右：片足上げ → 横ステップ、続けて左：片足上げ → 横ステップ） */
+const SEQUENCE: { motion: MotionId; side: Side }[] = [
+  { motion: 'raise', side: 'right' },
+  { motion: 'step', side: 'right' },
+  { motion: 'raise', side: 'left' },
+  { motion: 'step', side: 'left' },
+]
 
 type Phase = 'start' | 'training' | 'finish' | 'error'
 
@@ -48,6 +53,10 @@ export default function App() {
     }
   }, [])
 
+  const current = SEQUENCE[motionIdx]
+  // 対象の足は動作順序で決まる（開発者設定の値は足以外を使う）
+  const activeSpec = useMemo(() => ({ ...spec, side: current.side }), [spec, current.side])
+
   const start = () => {
     setMotionIdx(0)
     setRecords([])
@@ -55,7 +64,7 @@ export default function App() {
   }
 
   const onResult = (result: MotionResult, ms: number) => {
-    setRecords((rs) => [...rs, { motion: SEQUENCE[motionIdx], result, ms }])
+    setRecords((rs) => [...rs, { ...SEQUENCE[motionIdx], result, ms }])
     if (motionIdx + 1 < SEQUENCE.length) setMotionIdx(motionIdx + 1)
     else setPhase('finish')
   }
@@ -71,9 +80,9 @@ export default function App() {
       {phase === 'training' && estimator && (
         <TrainingScreen
           estimator={estimator}
-          spec={spec}
+          spec={activeSpec}
           facing={facing}
-          motion={SEQUENCE[motionIdx]}
+          motion={current.motion}
           onResult={onResult}
           onCameraError={fail}
           onDebug={DEV ? setDebug : undefined}
