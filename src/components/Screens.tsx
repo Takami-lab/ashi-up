@@ -1,4 +1,5 @@
 import type { CameraErrorCode } from '../camera/camera'
+import { formatSeconds } from '../logic/format'
 import type { MotionId, MotionRecord, Side } from '../types'
 
 export type AppError = CameraErrorCode | 'model'
@@ -38,6 +39,7 @@ export function FinishScreen({ records, onRestart }: { records: MotionRecord[]; 
               {SIDE_LABEL[r.side]}
               {MOTION_LABEL[r.motion]}
             </span>
+            <span className="time">{r.result === 'success' ? formatSeconds(r.ms) : '時間切れ'}</span>
             <span className="mark" aria-label={r.result === 'success' ? '成功' : '未達成'}>
               {r.result === 'success' ? '○' : '×'}
             </span>

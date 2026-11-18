@@ -195,8 +195,17 @@ body {
   background: #fff;
   border: 3px solid #dbe6f3;
   border-radius: 20px;
-  font-size: clamp(28px, 8vw, 40px);
+  font-size: clamp(22px, 6vw, 34px);
   font-weight: 800;
+}
+.results li > span:first-child {
+  flex: 1;
+}
+.results .time {
+  font-size: 0.7em;
+  margin-right: 16px;
+  color: #4a5b70;
+  font-variant-numeric: tabular-nums;
 }
 .results .mark {
   font-size: 1.3em;
