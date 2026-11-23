@@ -50,6 +50,12 @@ body {
   color: var(--green);
   font-size: clamp(56px, 18vw, 120px);
 }
+.rank {
+  margin: 0;
+  font-size: clamp(28px, 8vw, 44px);
+  font-weight: 800;
+  color: var(--blue-dark);
+}
 .title.error {
   color: var(--red);
 }
