@@ -1,6 +1,7 @@
-import { legIndices, LM, REQUIRED_BODY } from '../pose/landmarks'
+import { legIndices, LM } from '../pose/landmarks'
 import type { Lm, Pt, Side, Size } from '../types'
 import { dist, mean, mid } from './math'
+import { isFullBodyInFrame } from './personTracker'
 
 /** 直立姿勢の基準（動画ピクセル座標） */
 export interface Baseline {
@@ -21,8 +22,6 @@ interface Sample extends Baseline {
   t: number
 }
 
-const MIN_VISIBILITY = 0.5
-const FRAME_MARGIN = 0.01
 const STABLE_MS = 1000
 /** 安定とみなす最大のぶれ（脚長に対する比） */
 const MAX_SPREAD = 0.08
@@ -42,7 +41,7 @@ export class StandingCalibrator {
   }
 
   update(t: number, lms: Lm[] | null, frame: Size): { status: CalibStatus; baseline?: Baseline } {
-    if (!lms || !this.fullBodyInFrame(lms, frame)) {
+    if (!lms || !isFullBodyInFrame(lms, frame)) {
       this.samples = []
       return { status: 'noBody' }
     }
@@ -78,15 +77,6 @@ export class StandingCalibrator {
         hipWidth: s.reduce((sum, p) => sum + p.hipWidth, 0) / s.length,
       },
     }
-  }
-
-  private fullBodyInFrame(lms: Lm[], frame: Size) {
-    const mx = frame.w * FRAME_MARGIN
-    const my = frame.h * FRAME_MARGIN
-    return REQUIRED_BODY.every((i) => {
-      const p = lms[i]
-      return p.v >= MIN_VISIBILITY && p.x > mx && p.x < frame.w - mx && p.y > my && p.y < frame.h - my
-    })
   }
 
   /** 両脚が下向きに伸びている（しゃがみ・横向き・脚上げ中を除外） */

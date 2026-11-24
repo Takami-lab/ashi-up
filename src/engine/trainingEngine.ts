@@ -2,6 +2,7 @@ import { createViewTransform } from '../geometry/viewTransform'
 import { StandingCalibrator, type Baseline } from '../logic/calibration'
 import { kneeAngleDeg } from '../logic/formJudge'
 import { dist, mid } from '../logic/math'
+import { PersonTracker } from '../logic/personTracker'
 import { ReachJudge } from '../logic/reachJudge'
 import { computeStepTarget, StepJudge } from '../logic/stepJudge'
 import { computeTarget } from '../logic/target'
@@ -34,6 +35,10 @@ export interface DebugInfo {
   legLength: number
   ankleToTarget: number | null
   kneeAngle: number | null
+  /** 検出された人数 */
+  persons: number
+  /** 対象の1人を追跡中か */
+  locked: boolean
 }
 
 /**
@@ -42,6 +47,9 @@ export interface DebugInfo {
  */
 export class TrainingEngine {
   private smoother = new LandmarkSmoother(0.5)
+  /** トレーニングを行う1人を選び、全フローで同じ人物を追う */
+  private tracker = new PersonTracker()
+  private personCount = 0
   private calibrator: StandingCalibrator
   private judge: ReachJudge
   private stepJudge = new StepJudge()
@@ -136,8 +144,12 @@ export class TrainingEngine {
     this.lastInferAt = now
     this.videoSize = { w: v.videoWidth, h: v.videoHeight }
 
-    const raw = this.estimator.detect(v, now)
-    const lms = raw ? this.smoother.apply(raw.map((p) => ({ x: p.x * v.videoWidth, y: p.y * v.videoHeight, v: p.visibility ?? 0 }))) : null
+    const poses = this.estimator.detect(v, now).map((p) =>
+      p.map((q) => ({ x: q.x * v.videoWidth, y: q.y * v.videoHeight, v: q.visibility ?? 0 })),
+    )
+    this.personCount = poses.length
+    const raw = this.tracker.select(now, poses, this.videoSize)
+    const lms = raw ? this.smoother.apply(raw) : null
     if (!raw) this.smoother.reset()
     this.process(now, lms)
     this.render()
@@ -155,6 +167,7 @@ export class TrainingEngine {
       const r = this.calibrator.update(t, lms, this.videoSize)
       if (r.status === 'ready' && r.baseline) {
         this.baseline = r.baseline
+        this.tracker.confirm()
         this.judge.reset()
         this.stepJudge.reset()
         this.activeSince = t
@@ -261,6 +274,8 @@ export class TrainingEngine {
       legLength: this.baseline?.legLength ?? 0,
       ankleToTarget: ankle && this.overlay.target ? dist(ankle, this.overlay.target.center) / this.overlay.target.radius : null,
       kneeAngle: lms ? kneeAngleDeg(lms[leg.hip], lms[leg.knee], lms[leg.ankle]) : null,
+      persons: this.personCount,
+      locked: this.tracker.locked,
     })
   }
 }

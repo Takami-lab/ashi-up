@@ -42,7 +42,8 @@ export function DevPanel({ spec, onSpec, facing, onFacing, debug }: Props) {
       </div>
       {debug && (
         <pre>
-          {`fps ${debug.fps.toFixed(0)}  ${debug.delegate}\nlegLen ${debug.legLength.toFixed(0)}px\ndist/r ${debug.ankleToTarget?.toFixed(2) ?? '-'}\nknee ${debug.kneeAngle?.toFixed(0) ?? '-'}°`}
+          {`fps ${debug.fps.toFixed(0)}  ${debug.delegate}\nlegLen ${debug.legLength.toFixed(0)}px\ndist/r ${debug.ankleToTarget?.toFixed(2) ?? '-'}\nknee ${debug.kneeAngle?.toFixed(0) ?? '-'}°
+persons ${debug.persons}  ${debug.locked ? 'locked' : 'searching'}`}
         </pre>
       )}
     </details>

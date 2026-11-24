@@ -5,6 +5,9 @@ const BASE = import.meta.env.BASE_URL
 const WASM_DIR = `${BASE}mediapipe/wasm`
 const MODEL_PATH = `${BASE}models/pose_landmarker_lite.task`
 
+/** 同時に検出する人数。着席している人たちの中から、立っている1人を選べるようにする */
+const MAX_POSES = 5
+
 type Delegate = 'GPU' | 'CPU'
 type Vision = Awaited<ReturnType<typeof FilesetResolver.forVisionTasks>>
 
@@ -31,11 +34,11 @@ export class PoseEstimator {
     }
   }
 
-  /** 1人分のランドマーク（0..1 正規化）を返す。検出なし・切替中は null */
-  detect(video: HTMLVideoElement, timestampMs: number): NormalizedLandmark[] | null {
-    if (this.rebuilding) return null
+  /** 検出された全員分のランドマーク（0..1 正規化）を返す。検出なし・切替中は空配列 */
+  detect(video: HTMLVideoElement, timestampMs: number): NormalizedLandmark[][] {
+    if (this.rebuilding) return []
     try {
-      return this.landmarker.detectForVideo(video, timestampMs).landmarks[0] ?? null
+      return this.landmarker.detectForVideo(video, timestampMs).landmarks
     } catch (e) {
       if (this.delegate === 'GPU') {
         console.warn('GPU inference failed, switching to CPU', e)
@@ -43,7 +46,7 @@ export class PoseEstimator {
       } else {
         console.error(e)
       }
-      return null
+      return []
     }
   }
 
@@ -67,7 +70,7 @@ function build(vision: Vision, delegate: Delegate) {
   return PoseLandmarker.createFromOptions(vision, {
     baseOptions: { modelAssetPath: MODEL_PATH, delegate },
     runningMode: 'VIDEO',
-    numPoses: 1,
+    numPoses: MAX_POSES,
     minPoseDetectionConfidence: 0.5,
     minPosePresenceConfidence: 0.5,
     minTrackingConfidence: 0.5,
